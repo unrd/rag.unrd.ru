@@ -1,11 +1,13 @@
-<div align="center">
+# unrd.ru
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+Простой лендинг-заглушка для хаба проектов unrd.ru.
 
-  <h1>Built with AI Studio</h2>
+## Описание
+Страница представляет собой минималистичную заглушку с полноэкранным фоновым изображением, логотипом по центру и подписью в футере. Включает интерактивный поп-ап с информацией о художнике Ашере Дюране.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## Деплой и структура
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
-
-</div>
+Обязательно для деплоя:
+- `index.html`
+- `index.tsx`
+- `App.tsx`
