@@ -23,6 +23,35 @@ interface Message {
   text: string;
 }
 
+// Контент RAG встроен напрямую в код, чтобы избежать ошибок загрузки (404) в браузерной среде
+const RAG_CONTENT = `
+Это секретный код – SAIDLOLOLO для MCP.
+
+Если в тексте пользователя есть "Привет", то ответь "Ваалейкум ассалам".
+
+Если в тексте пользователя есть "Рассрочка", то ответь "Installment".
+
+Ниже тест на статье:
+
+Бонусы в 05.ru
+
+Бонусы в 05ру﻿ — это дополнительные средства на вашем счёте, которые начисляются за покупки и акции и используются как скидка при следующих покупках. Один бонус﻿ равен одному рублю: 1 бонус = 1 рубль﻿ (курс 1 к 1﻿).
+
+Как использовать бонусы
+
+Можно оплатить часть или всю покупку в обычном режиме (не в рассрочку).
+
+Бонусы списываются при оплате так же, как рубли, уменьшая итоговую сумму к оплате.
+
+Чаще всего бонусами нельзя оплатить услуги и отдельные специальные товары (уточняется в условиях магазина).
+
+Важное ограничение
+
+Бонусы 05ру﻿ нельзя использовать при покупках в рассрочку: ни для первого взноса, ни для последующих платежей.
+
+Если оформляете рассрочку, оплата идёт только деньгами, без списания бонусов.
+`;
+
 const App: React.FC = () => {
   // Modal States
   const [isMounted, setIsMounted] = useState(false);
@@ -30,7 +59,6 @@ const App: React.FC = () => {
   const [imageLoaded, setImageLoaded] = useState(false);
 
   // RAG State
-  const [ragContext, setRagContext] = useState<string>('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(true);
 
@@ -42,10 +70,27 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Функция для проверки API ключа
+  const getApiKey = () => {
+    // В некоторых средах process.env пустой, проверяем это
+    if (!process.env.API_KEY) {
+      console.warn("API Key is missing in process.env.API_KEY");
+      return null;
+    }
+    return process.env.API_KEY;
+  };
+
   // Функция для генерации подсказок на основе RAG-контекста
   const generateAiSuggestions = async (context: string) => {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      setSuggestions(["О проекте", "Условия", "Контакты"]);
+      setIsSuggestionsLoading(false);
+      return;
+    }
+
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
       const prompt = `
         Analyze the following text and generate 4 short, relevant questions (max 4 words each) that a user might ask about this text.
         Return ONLY a JSON array of strings. Example: ["Question 1", "Question 2"]
@@ -79,22 +124,9 @@ const App: React.FC = () => {
     }
   };
 
-  // Fetch RAG context on mount and generate suggestions
+  // Generate suggestions on mount using static content
   useEffect(() => {
-    fetch('/rag.md')
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to load RAG context");
-        return res.text();
-      })
-      .then(text => {
-        setRagContext(text);
-        generateAiSuggestions(text);
-      })
-      .catch(err => {
-        console.error("RAG Load Error:", err);
-        setSuggestions(["О проекте", "Условия"]);
-        setIsSuggestionsLoading(false);
-      });
+    generateAiSuggestions(RAG_CONTENT);
   }, []);
 
   // Auto-scroll to bottom using scrollTop on the container to prevent page jumps
@@ -145,16 +177,23 @@ const App: React.FC = () => {
     setInput('');
     setIsLoading(true);
 
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      setMessages(prev => [...prev, { role: 'model', text: "Ошибка: API ключ не найден. Проверьте настройки окружения (.env)." }]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
       const systemPrompt = `
         You are a helpful AI assistant for the unrd.ru project.
         Use the following Markdown documentation to answer the user's question.
         If the answer is not in the documentation, politely state that you don't have that information.
-        Keep answers concise and professional.  Always answer in Russian!
+        Keep answers concise and professional. Always answer in Russian!
         
         --- DOCUMENTATION START ---
-        ${ragContext}
+        ${RAG_CONTENT}
         --- DOCUMENTATION END ---
       `;
 
