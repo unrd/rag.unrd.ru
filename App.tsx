@@ -70,20 +70,37 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Функция для проверки API ключа
+  // Robust API Key Retrieval Function for all environments (Vite, CRA, Node)
   const getApiKey = () => {
-    // В некоторых средах process.env пустой, проверяем это
-    if (!process.env.API_KEY) {
-      console.warn("API Key is missing in process.env.API_KEY");
-      return null;
+    // 1. Check standard process.env (Webpack/Node)
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      return process.env.API_KEY;
     }
-    return process.env.API_KEY;
+    
+    // 2. Check Vite specific env (VITE_API_KEY)
+    try {
+      // @ts-ignore
+      if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
+        // @ts-ignore
+        return import.meta.env.VITE_API_KEY;
+      }
+    } catch (e) {
+      // Ignore errors if import.meta is not available
+    }
+
+    // 3. Check Create React App (REACT_APP_API_KEY)
+    if (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_KEY) {
+      return process.env.REACT_APP_API_KEY;
+    }
+
+    return null;
   };
 
   // Функция для генерации подсказок на основе RAG-контекста
   const generateAiSuggestions = async (context: string) => {
     const apiKey = getApiKey();
     if (!apiKey) {
+      // Fail silently for suggestions
       setSuggestions(["О проекте", "Условия", "Контакты"]);
       setIsSuggestionsLoading(false);
       return;
@@ -179,7 +196,7 @@ const App: React.FC = () => {
 
     const apiKey = getApiKey();
     if (!apiKey) {
-      setMessages(prev => [...prev, { role: 'model', text: "Ошибка: API ключ не найден. Проверьте настройки окружения (.env)." }]);
+      setMessages(prev => [...prev, { role: 'model', text: "Ошибка: API ключ не найден. Если вы используете Vite, переименуйте переменную в .env в VITE_API_KEY и перезапустите сервер." }]);
       setIsLoading(false);
       return;
     }
